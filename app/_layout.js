@@ -1,9 +1,9 @@
-import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
 
 export default function Layout() {
   return (
-    <Tabs screenOptions={{ headerShown: true }}>
+    <Tabs screenOptions={{ headerShown: true }} initialRouteName="gpr">
       <Tabs.Screen
         name="gpr"
         options={{
@@ -19,15 +19,6 @@ export default function Layout() {
           title: 'Запросы',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="document-text" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="prescriptions"
-        options={{
-          title: 'Предписания',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="construct" color={color} size={size} />
           ),
         }}
       />

@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('icons');
+  const [password, setPassword] = useState('123');
   const router = useRouter();
 
   const handleLogin = () => {
