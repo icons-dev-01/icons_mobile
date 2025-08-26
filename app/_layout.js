@@ -31,6 +31,18 @@ export default function Layout() {
           ),
         }}
       />
+
+
+      <Tabs.Screen
+        name="Requir"
+        options={{
+          title: 'Распр',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="business" color={color} size={size} />
+          ),
+        }}
+      />
+
     </Tabs>
   );
 }
