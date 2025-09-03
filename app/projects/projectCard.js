@@ -115,7 +115,7 @@ export default function ProjectCard() {
       {/* верхняя панель */}
       <View style={styles.topBar}>
         <Button title="Назад" onPress={() => router.back()} />
-        <Button title="Сохранить в BD" onPress={handleSave} />
+        <Button title="Сохранить" color="green" onPress={handleSave} />
       </View>
 
       <ScrollView style={styles.container}>

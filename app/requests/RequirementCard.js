@@ -6,20 +6,19 @@ import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    Button,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Button,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 // ⚡️ клиент Supabase
 const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co";
-const supabaseAnonKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTkyNjYwOSwiZXhwIjoyMDcxNTAyNjA5fQ.xfq3j9C3Cl3oUxUQ1HpND_IBPYHltr_YKiZKeDIzUn4";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTkyNjYwOSwiZXhwIjoyMDcxNTAyNjA5fQ.xfq3j9C3Cl3oUxUQ1HpND_IBPYHltr_YKiZKeDIzUn4";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 let docCounter = 1; // авто-счётчик документов

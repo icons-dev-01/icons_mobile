@@ -2,19 +2,17 @@ import { createMaterialTopTabNavigator } from "@react-navigation/material-top-ta
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Button, ScrollView, StyleSheet, View } from "react-native";
 import { List } from "react-native-paper";
 
-const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co";   // замени на свой URL
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MjY2MDksImV4cCI6MjA3MTUwMjYwOX0.NBqBjM3cqE14Erri9MysjoFL0AkkDhs65Q_OlcaANEw";          // замени на свой ключ
-
+const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTkyNjYwOSwiZXhwIjoyMDcxNTAyNjA5fQ.xfq3j9C3Cl3oUxUQ1HpND_IBPYHltr_YKiZKeDIzUn4";
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const Tab = createMaterialTopTabNavigator();
 const router = useRouter();
 
-// 🔹 Компонент для отображения дерева задач
-const TaskTree = ({ status }) => {
+const TaskTree = ({ status, openType }) => {
   const [expanded, setExpanded] = useState({});
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -23,23 +21,23 @@ const TaskTree = ({ status }) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // загрузка задач по статусу
+  // загрузка задач из PlanJobs2
   useEffect(() => {
     const fetchTasks = async () => {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from("gpr_tasks")
+          .from("PlanJobs")
           .select("*")
-          .eq("status", status);
+          .eq("status", status); // поле value используем как статус
 
         if (error) throw error;
 
-        // группируем по parent_id
-        const parentTasks = data.filter((t) => !t.parent_id);
+        // группировка по Parent_id
+        const parentTasks = data.filter((t) => !t.Parent_id);
         const tasksWithChildren = parentTasks.map((parent) => ({
           ...parent,
-          children: data.filter((t) => t.parent_id === parent.id),
+          children: data.filter((t) => t.Parent_id === parent.Id),
         }));
 
         setTasks(tasksWithChildren);
@@ -66,29 +64,35 @@ const TaskTree = ({ status }) => {
       {tasks.map((task) =>
         task.children && task.children.length > 0 ? (
           <List.Accordion
-            key={task.id}
-            title={task.title}
-            expanded={!!expanded[task.id]}
-            onPress={() => toggleExpand(task.id)}
+            key={task.Id}
+            title={task.Name}
+            expanded={!!expanded[task.Id]}
+            onPress={() => toggleExpand(task.Id)}
           >
             {task.children.map((child) => (
               <List.Item
-                key={child.id}
-                title={child.title}
+                key={child.Id}
+                title={child.Name}
                 left={(props) => <List.Icon {...props} icon="file-document" />}
                 onPress={() =>
-                  router.push({ pathname: "/gpr/taskCard", params: { id: child.id } })
+                  router.push({
+                    pathname: openType === "action" ? "/gpr/actionCard" : "/gpr/taskCard",
+                    params: { id: child.Id },
+                  })
                 }
               />
             ))}
           </List.Accordion>
         ) : (
           <List.Item
-            key={task.id}
-            title={task.title}
+            key={task.Id}
+            title={task.Name}
             left={(props) => <List.Icon {...props} icon="check" />}
             onPress={() =>
-              router.push({ pathname: "/gpr/taskCard", params: { id: task.id } })
+              router.push({
+                pathname: openType === "action" ? "/gpr/actionCard" : "/gpr/taskCard",
+                params: { id: task.Id },
+              })
             }
           />
         )
@@ -97,10 +101,19 @@ const TaskTree = ({ status }) => {
   );
 };
 
-// 🔹 Вкладки
-const NewTasks = () => <TaskTree status="new" />;
-const InProgressTasks = () => <TaskTree status="inProgress" />;
-const DoneTasks = () => <TaskTree status="done" />;
+// вкладка Новые → добавляем кнопку
+const NewTasks = () => (
+  <View style={{ flex: 1 }}>
+    <Button
+      title="Добавить"
+      onPress={() => router.push({ pathname: "/gpr/taskCard", params: { id: "new" } })}
+    />
+    <TaskTree status="new" openType="task" />
+  </View>
+);
+
+const InProgressTasks = () => <TaskTree status="start" openType="action" />;
+const DoneTasks = () => <TaskTree status="done" openType="task" />;
 
 export default function GPRScreen() {
   return (
