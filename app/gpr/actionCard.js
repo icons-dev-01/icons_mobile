@@ -318,7 +318,7 @@ export default function ActivityPage() {
       
       <View style={styles.dateRow}>
         <View style={styles.dateColumn}>
-          <Text style={styles.label}>Дата начало</Text>
+          <Text style={styles.label}>Дата начала</Text>
           <TouchableOpacity style={styles.dateInput} onPress={() => setShowStartPicker(true)}>
             <Text>{formatDate(startDate)}</Text>
           </TouchableOpacity>
@@ -356,7 +356,7 @@ export default function ActivityPage() {
 
       <View style={styles.dateRow}>
         <View style={styles.dateColumn}>
-          <Text style={styles.label}>План дата начало</Text>
+          <Text style={styles.label}>План дата начала</Text>
           <Text style={styles.subLabel}>Job StartDate</Text>
           <TouchableOpacity style={styles.dateInput} onPress={() => setShowPlanStartPicker(true)}>
             <Text>{formatDate(planStartDate)}</Text>

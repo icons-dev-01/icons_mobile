@@ -3,7 +3,7 @@ import { Tabs } from 'expo-router';
 
 export default function Layout() {
   return (
-    <Tabs screenOptions={{ headerShown: true }} initialRouteName="gpr">
+    <Tabs screenOptions={{ headerShown: true }} initialRouteName="login">
       <Tabs.Screen
         name="gpr"
         options={{
@@ -41,8 +41,15 @@ export default function Layout() {
             <Ionicons name="business" color={color} size={size} />
           ),
         }}
-      />
+          />
 
+      // убрать логин из нижней панели 
+      <Tabs.Screen
+        name="login"
+        options={{
+            href: null, 
+        }}
+      />
     </Tabs>
   );
 }

@@ -32,12 +32,10 @@ export default function ProjectCard() {
 
   // 📝 состояния для всех полей
   const [nameValue, setNameValue] = useState(Name || "");
-  const [descriptionValue, setDescriptionValue] = useState(Description || "");
-  const [dateStartValue, setDateStartValue] = useState(DateStart || "");
-  const [dateEndValue, setDateEndValue] = useState(DateEnd || "");
+  const [prefixValue, setPrefixValue] = useState(""); // ⚡️ новое поле "Префикс"
   const [parentIdValue, setParentIdValue] = useState(Parent_id || null);
-  const [objectIdValue, setObjectIdValue] = useState(Object_Id || "");
-  const [nidValue, setNidValue] = useState(nid || "");
+  const [objectIdValue, setObjectIdValue] = useState(Object_Id || null);
+  const [descriptionValue, setDescriptionValue] = useState(Description || "");
 
   // ⚡️ список проектов для выбора Parent_id
   const [projectsList, setProjectsList] = useState([]);
@@ -67,12 +65,10 @@ export default function ProjectCard() {
           .from("Projects")
           .update({
             Name: nameValue,
+            Prefix: prefixValue || null,
             Description: descriptionValue,
-            DateStart: dateStartValue || null,
-            DateEnd: dateEndValue || null,
             Parent_id: parentIdValue || null,
             Object_Id: objectIdValue || null,
-            nid: nidValue || null,
             updated_at: new Date().toISOString(),
           })
           .eq("id", id);
@@ -86,12 +82,10 @@ export default function ProjectCard() {
           .insert([
             {
               Name: nameValue,
+              Prefix: prefixValue || null,
               Description: descriptionValue,
-              DateStart: dateStartValue || null,
-              DateEnd: dateEndValue || null,
               Parent_id: parentIdValue || null,
               Object_Id: objectIdValue || null,
-              nid: nidValue || null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             },
@@ -119,62 +113,52 @@ export default function ProjectCard() {
       </View>
 
       <ScrollView style={styles.container}>
-        <Text style={styles.label}>Название</Text>
+        <Text style={styles.label}>Наименование</Text>
         <TextInput
-          style={styles.input}
-          value={nameValue}
-          onChangeText={setNameValue}
+            style={styles.input}
+            value={nameValue}
+            onChangeText={setNameValue}
         />
+
+        <Text style={styles.label}>Префикс</Text>
+        <TextInput
+            style={styles.input}
+            value={prefixValue}
+            onChangeText={setPrefixValue}
+        />
+
+        <Text style={styles.label}>Родительский проект</Text>
+        <View style={styles.pickerWrapper}>
+            <Picker
+                selectedValue={parentIdValue}
+                onValueChange={(itemValue) => setParentIdValue(itemValue)}
+            >
+                <Picker.Item label="Выберите проект верхнего уровня" value={null} />
+                {projectsList.map((proj) => (
+                    <Picker.Item key={proj.id} label={proj.Name} value={proj.id} />
+                ))}
+            </Picker>
+        </View>
+
+        <Text style={styles.label}>Объект</Text>
+        <View style={styles.pickerWrapper}>
+            <Picker
+                selectedValue={objectIdValue}
+                onValueChange={(itemValue) => setObjectIdValue(itemValue)}
+            >
+                <Picker.Item label="Выберите объект" value={null} />
+                {/* пока тестовый список, можно заменить */}
+                <Picker.Item label="Объект 1" value="1" />
+                <Picker.Item label="Объект 2" value="2" />
+            </Picker>
+        </View>
 
         <Text style={styles.label}>Описание</Text>
         <TextInput
-          style={[styles.input, { height: 80 }]}
-          value={descriptionValue}
-          onChangeText={setDescriptionValue}
-          multiline
-        />
-
-        <Text style={styles.label}>Дата начала</Text>
-        <TextInput
-          style={styles.input}
-          value={dateStartValue}
-          onChangeText={setDateStartValue}
-          placeholder="YYYY-MM-DD"
-        />
-
-        <Text style={styles.label}>Дата окончания</Text>
-        <TextInput
-          style={styles.input}
-          value={dateEndValue}
-          onChangeText={setDateEndValue}
-          placeholder="YYYY-MM-DD"
-        />
-
-        <Text style={styles.label}>Parent_id</Text>
-        <View style={styles.pickerWrapper}>
-          <Picker
-            selectedValue={parentIdValue}
-            onValueChange={(itemValue) => setParentIdValue(itemValue)}
-          >
-            <Picker.Item label="Не выбрано" value={null} />
-            {projectsList.map((proj) => (
-              <Picker.Item key={proj.id} label={proj.Name} value={proj.id} />
-            ))}
-          </Picker>
-        </View>
-
-        <Text style={styles.label}>Object_Id</Text>
-        <TextInput
-          style={styles.input}
-          value={objectIdValue}
-          onChangeText={setObjectIdValue}
-        />
-
-        <Text style={styles.label}>nid</Text>
-        <TextInput
-          style={styles.input}
-          value={nidValue}
-          onChangeText={setNidValue}
+            style={[styles.input, { height: 80 }]}
+            value={descriptionValue}
+            onChangeText={setDescriptionValue}
+            multiline
         />
       </ScrollView>
     </View>

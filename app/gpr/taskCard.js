@@ -1,5 +1,6 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
+import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -233,99 +234,92 @@ export default function TaskCard() {
         </View>
       ) : (
         <ScrollView style={styles.container}>
-          <Text style={styles.label}>Название</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} />
+            <Text style={styles.label}>Название</Text>
+            <TextInput style={styles.input} value={name} onChangeText={setName} />
 
-          <Text style={styles.label}>Планируемая дата начала</Text>
-          <Button title={startDate.toLocaleDateString()} onPress={() => setShowStartPicker(true)} />
-          {showStartPicker && (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              onChange={(event, date) => {
-                setShowStartPicker(Platform.OS === "ios");
-                if (date) setStartDate(date);
-              }}
-            />
-          )}
+            <Text style={styles.label}>Планируемая дата начала</Text>
+            <Button title={startDate.toLocaleDateString()} onPress={() => setShowStartPicker(true)} />
+            {showStartPicker && (
+                <DateTimePicker
+                    value={startDate}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    onChange={(event, date) => {
+                        setShowStartPicker(Platform.OS === "ios");
+                        if (date) setStartDate(date);
+                    }}
+                />
+            )}
 
-          <Text style={styles.label}>Планируемая дата окончания</Text>
-          <Button title={endDate.toLocaleDateString()} onPress={() => setShowEndPicker(true)} />
-          {showEndPicker && (
-            <DateTimePicker
-              value={endDate}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              onChange={(event, date) => {
-                setShowEndPicker(Platform.OS === "ios");
-                if (date) setEndDate(date);
-              }}
-            />
-          )}
+            <Text style={styles.label}>Планируемая дата окончания</Text>
+            <Button title={endDate.toLocaleDateString()} onPress={() => setShowEndPicker(true)} />
+            {showEndPicker && (
+                <DateTimePicker
+                    value={endDate}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    onChange={(event, date) => {
+                        setShowEndPicker(Platform.OS === "ios");
+                        if (date) setEndDate(date);
+                    }}
+                />
+            )}
 
-          <Text style={styles.label}>Родительский ID</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={parentId || ""}
-            onChangeText={(text) => setParentId(text ? parseInt(text) : null)}
-          />
-
-          <Text style={styles.label}>Автор ID</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={authorId || ""}
-            onChangeText={(text) => setAuthorId(text ? parseInt(text) : null)}
-          />
-
-          <Text style={styles.label}>Проект ID</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={projectId || ""}
-            onChangeText={(text) => setProjectId(text ? parseInt(text) : null)}
-          />
-
-          <Text style={styles.label}>Следующая задача ID</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={nextJobId || ""}
-            onChangeText={(text) => setNextJobId(text ? parseInt(text) : null)}
-          />
-
-          <Text style={styles.label}>Предыдущая задача ID</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={prevJobId || ""}
-            onChangeText={(text) => setPrevJobId(text ? parseInt(text) : null)}
-          />
-
-          <Text style={styles.label}>Группа</Text>
-          <Button title={isGroup ? "Да" : "Нет"} onPress={() => setIsGroup(!isGroup)} />
-
-          <Text style={styles.label}>Значение</Text>
-          <TextInput style={styles.input} value={value} onChangeText={setValue} />
-
-          <Text style={styles.label}>Секция ID</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={sectionId || ""}
-            onChangeText={(text) => setSectionId(text ? parseInt(text) : null)}
-          />
-
-          <Text style={styles.label}>Фото материалы</Text>
-          <Button title="Загрузить фото" onPress={pickImage} />
-          {photos.map((photo, index) => (
-            <View key={index} style={styles.photoContainer}>
-              <Image source={{ uri: photo }} style={styles.image} />
-              <Button title="Удалить" onPress={() => removePhoto(index)} color="red" />
+            {/* 🔽 Группа (dropdown вместо TextInput) */}
+            <Text style={styles.label}>Группа</Text>
+            <View style={styles.pickerWrapper}>
+                <Picker
+                    selectedValue={parentId}
+                    onValueChange={(value) => setParentId(value)}
+                >
+                    <Picker.Item label="Выберите группу" value={null} />
+                    <Picker.Item label="Группа 1" value={1} />
+                    <Picker.Item label="Группа 2" value={2} />
+                    <Picker.Item label="Группа 3" value={3} />
+                </Picker>
             </View>
-          ))}
+
+            {/* 🔽 Объем работ */}
+            <Text style={styles.label}>Объем работ</Text>
+            <TextInput
+                style={styles.input}
+                value={value}
+                onChangeText={setValue}
+                keyboardType="numeric"
+            />
+
+            {/* 🔽 Предыдущая работа (dropdown) */}
+            <Text style={styles.label}>Предыдущая работа</Text>
+            <View style={styles.pickerWrapper}>
+                <Picker
+                    selectedValue={prevJobId}
+                    onValueChange={(value) => setPrevJobId(value)}
+                >
+                    <Picker.Item label="Выберите работу" value={null} />
+                    <Picker.Item label="Работа А" value={101} />
+                    <Picker.Item label="Работа B" value={102} />
+                    <Picker.Item label="Работа C" value={103} />
+                </Picker>
+            </View>
+
+            {/* 🔽 Описание */}
+            <Text style={styles.label}>Описание</Text>
+            <TextInput
+                style={[styles.input, { height: 80 }]}
+                value={sectionId ? sectionId.toString() : ""}
+                onChangeText={(text) => setSectionId(text)}
+                multiline
+            />
+
+            {/* 🔽 Фото материалы */}
+            <Text style={styles.label}>Фото материалы</Text>
+            <Button title="Загрузить фото" onPress={pickImage} />
+            {photos.map((photo, index) => (
+                <View key={index} style={styles.photoContainer}>
+                    <Image source={{ uri: photo }} style={styles.image} />
+                    <Button title="Удалить" onPress={() => removePhoto(index)} color="red" />
+                </View>
+            ))}
         </ScrollView>
       )}
 
@@ -390,7 +384,15 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-  },
+    },
+
+  pickerWrapper: {
+        borderWidth: 1,
+        borderColor: "#ccc",
+        borderRadius: 8,
+        marginTop: 4,
+    },
+
   modalBox: {
     width: "80%",
     backgroundColor: "#fff",

@@ -1,31 +1,71 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Button, StyleSheet, Text, View } from "react-native";
+import { Button, StyleSheet, Text, View, ScrollView } from "react-native";
 
 export default function RequestCard() {
-  const router = useRouter();
-  const { id, title, description } = useLocalSearchParams();
+    const router = useRouter();
+    const { id, jobName, endDate, techStatus, authorStatus, valueJob, description } = useLocalSearchParams();
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Карточка запроса</Text>
-      <Text style={styles.label}>ID: {id}</Text>
-      <Text style={styles.label}>Название: {title}</Text>
-      <Text style={styles.desc}>{description}</Text>
+    return (
+        <ScrollView style={styles.container}>
+            <Text style={styles.title}>Запрос на приёмку №{id} от {endDate}</Text>
 
-      <View style={styles.buttons}>
-        <Button title="Согласовать" onPress={() => alert(`Запрос ${id} согласован ✅`)} />
-        <Button title="Отклонить" color="red" onPress={() => alert(`Запрос ${id} отклонён ❌`)} />
-      </View>
+            <View style={styles.block}>
+                <Text style={styles.blockTitle}>Активность</Text>
+                <Text style={styles.value}>{jobName || "—"}</Text>
+            </View>
 
-      <Button title="Назад" onPress={() => router.back()} />
-    </View>
-  );
+            <View style={styles.block}>
+                <Text style={styles.blockTitle}>Дата окончания</Text>
+                <Text style={styles.value}>{endDate || "—"}</Text>
+            </View>
+
+            <View style={styles.block}>
+                <Text style={styles.blockTitle}>Тех.надзор</Text>
+                <Text style={styles.value}>{techStatus || "—"}</Text>
+            </View>
+
+            <View style={styles.block}>
+                <Text style={styles.blockTitle}>Авторский надзор</Text>
+                <Text style={styles.value}>{authorStatus || "—"}</Text>
+            </View>
+
+            <View style={styles.block}>
+                <Text style={styles.blockTitle}>Объем работы</Text>
+                <Text style={styles.value}>{valueJob || "—"}</Text>
+            </View>
+
+            <View style={styles.block}>
+                <Text style={styles.blockTitle}>Описание</Text>
+                <Text style={styles.value}>{description || "—"}</Text>
+            </View>
+
+            <View style={styles.buttons}>
+                <View style={styles.buttonGreen}>
+                    <Button title="Согласовать" onPress={() => alert(`Запрос ${id} согласован ✅`)} color="white" />
+                </View>
+                <View style={styles.buttonRed}>
+                    <Button title="Отклонить" onPress={() => alert(`Запрос ${id} отклонён ❌`)} color="white" />
+                </View>
+            </View>
+
+            <Button title="Назад" onPress={() => router.back()} />
+        </ScrollView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#fff" },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
-  label: { fontSize: 16, marginBottom: 10 },
-  desc: { fontSize: 14, color: "#444", marginBottom: 20 },
-  buttons: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+    container: { flex: 1, padding: 16, backgroundColor: "#fff" },
+    title: { fontSize: 18, fontWeight: "bold", marginBottom: 16 },
+    block: { marginBottom: 12 },
+    blockTitle: {
+        backgroundColor: "#ddd",
+        padding: 6,
+        fontWeight: "bold",
+        fontSize: 14,
+    },
+    value: { padding: 6, fontSize: 14 },
+    buttons: { flexDirection: "row", justifyContent: "space-between", marginVertical: 20 },
+    buttonGreen: { flex: 1, marginRight: 8, backgroundColor: "green", borderRadius: 6 },
+    buttonRed: { flex: 1, marginLeft: 8, backgroundColor: "red", borderRadius: 6 },
 });
+ 
