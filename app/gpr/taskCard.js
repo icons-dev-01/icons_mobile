@@ -2,7 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Button,
@@ -17,12 +17,8 @@ import {
   View,
 } from "react-native";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "../../supabaseClient";
 
-const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co"; // замени на свой URL
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MjY2MDksImV4cCI6MjA3MTUwMjYwOX0.NBqBjM3cqE14Erri9MysjoFL0AkkDhs65Q_OlcaANEw"; // замени на свой ключ
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function TaskCard() {
   const router = useRouter();

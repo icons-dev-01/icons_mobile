@@ -1,6 +1,7 @@
 import { Picker } from "@react-native-picker/picker"; // ⚡️ библиотека для dropdown
 import { createClient } from "@supabase/supabase-js";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import {
   Button,
@@ -44,7 +45,7 @@ export default function ProjectCard() {
     const fetchProjects = async () => {
       const { data, error } = await supabase
         .from("Projects")
-        .select("Name")
+        .select("Id, Name")
         .order("Name");
 
       if (error) {
@@ -57,52 +58,65 @@ export default function ProjectCard() {
     fetchProjects();
   }, []);
 
-  const handleSave = async () => {
-    try {
-      if (id) {
-        // ⚡️ обновляем запись
-        const { error } = await supabase
-          .from("Projects")
-          .update({
+const handleSave = async () => {
+  try {
+    // ⚡️ достаём userId из AsyncStorage
+    const userId = await AsyncStorage.getItem("userId");
+    if (!userId) throw new Error("Пользователь не найден (не залогинен)");
+
+    if (id) {
+      // обновляем проект
+      const { error } = await supabase
+        .from("Projects")
+        .update({
+          Name: nameValue,
+          Prefix: prefixValue || null,
+          Description: descriptionValue,
+          Parent_id: parentIdValue || null,
+          Object_Id: objectIdValue || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("Id", id);
+
+      if (error) throw error;
+      console.log("✅ Проект обновлен");
+    } else {
+      // создаём проект
+      const { data: newProject, error } = await supabase
+        .from("Projects")
+        .insert([
+          {
             Name: nameValue,
             Prefix: prefixValue || null,
             Description: descriptionValue,
             Parent_id: parentIdValue || null,
             Object_Id: objectIdValue || null,
+            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          })
-          .eq("id", id);
+          },
+        ])
+        .select()
+        .single();
 
-        if (error) throw error;
-        console.log("✅ Проект обновлен");
-      } else {
-        // ⚡️ создаём новую запись
-        const { data: newProject, error } = await supabase
-          .from("Projects")
-          .insert([
-            {
-              Name: nameValue,
-              Prefix: prefixValue || null,
-              Description: descriptionValue,
-              Parent_id: parentIdValue || null,
-              Object_Id: objectIdValue || null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ])
-          .select()
-          .single();
+      if (error) throw error;
+      console.log("✅ Новый проект создан:", newProject);
 
-        if (error) throw error;
-        console.log("✅ Новый проект создан:", newProject);
-      }
+      // ⚡️ создаём связь UserProjects
+      const { error: linkError } = await supabase
+        .from("UserProjects")
+        .insert([{ user_id: userId, project_id: newProject.Id }]);
 
-      router.back();
-    } catch (err) {
-      console.log("❌ Ошибка сохранения");
-      console.error(err);
+      if (linkError) throw linkError;
+      console.log("🔗 Связь UserProject создана");
     }
-  };
+
+    router.back();
+  } catch (err) {
+    console.log("❌ Ошибка сохранения");
+    console.error(err);
+  }
+};
+
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>

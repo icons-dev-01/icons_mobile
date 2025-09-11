@@ -5,6 +5,16 @@ export default function Layout() {
   return (
     <Tabs screenOptions={{ headerShown: true }} initialRouteName="login">
       <Tabs.Screen
+        name="projects"
+        options={{
+          title: 'Проекты',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="business" color={color} size={size} />
+          ),
+        }}
+          />
+
+        <Tabs.Screen
         name="gpr"
         options={{
           title: 'ГПР',
@@ -22,26 +32,7 @@ export default function Layout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="projects"
-        options={{
-          title: 'Проекты',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="business" color={color} size={size} />
-          ),
-        }}
-      />
-
-
-      <Tabs.Screen
-        name="Requir"
-        options={{
-          title: 'Распр',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="business" color={color} size={size} />
-          ),
-        }}
-          />
+      
 
       // убрать логин из нижней панели 
       <Tabs.Screen

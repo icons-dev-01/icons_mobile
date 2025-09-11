@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,93 +12,74 @@ import {
 } from "react-native";
 
 // 🔹 Подключение к Supabase
-const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co"; // Убедитесь, что это ваш URL
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MjY2MDksImV4cCI6MjA3MTUwMjYwOX0.NBqBjM3cqE14Erri9MysjoFL0AkkDhs65Q_OlcaANEw";
+const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co";
+const supabaseAnonKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MjY2MDksImV4cCI6MjA3MTUwMjYwOX0.NBqBjM3cqE14Erri9MysjoFL0AkkDhs65Q_OlcaANEw";
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// 🔹 Рекурсивный компонент для отображения дерева проектов
-function ProjectTree({ projects, router }) {
-  return (
-    <View>
-      {projects.map((project) => (
-        <View key={project.id} style={styles.node}>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() =>
-              router.push({
-                pathname: "/projects/projectCard",
-                params: {
-                  id: project.id,
-                  prefix: project.prefix || "",
-                  name: project.name || "",
-                  parent: project.parent_id || "",
-                  cadastral: project.cadastral || "",
-                  description: project.description || "",
-                },
-              })
-            }
-          >
-            <Text style={styles.title}>
-              {project.prefix} - {project.name}
-            </Text>
-          </TouchableOpacity>
-
-          {project.children && project.children.length > 0 && (
-            <View style={styles.children}>
-              <ProjectTree projects={project.children} router={router} />
-            </View>
-          )}
-        </View>
-      ))}
-    </View>
-  );
-}
 
 export default function Projects() {
   const router = useRouter();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null); // 🔹 Состояние для ошибок
+  const [error, setError] = useState(null);
+
+  // 🔹 Получение проектов пользователя
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        setError("Не найден пользователь (сначала войдите)");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("UserProjects")
+        .select(
+          `
+          project:Projects (
+            Id,
+            Name,
+            Description,
+            DateStart,
+            DateEnd,
+            Parent_id,
+            Object_Id,
+            nid,
+            created_at,
+            updated_at,
+            Prefix
+          )
+        `
+        )
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        setProjects([]);
+        return;
+      }
+
+      // достаём сами проекты
+      const projectList = data.map((row) => row.project);
+      setProjects(projectList);
+    } catch (err) {
+      console.error("Ошибка загрузки проектов:", err.message);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      setLoading(true);
-      setError(null); // 🔹 Сбрасываем ошибку перед новым запросом
-      try {
-        // 🔹 Запрос всех проектов из таблицы projects
-        const { data, error } = await supabase.from("Projects").select("*");
-
-        if (error) throw error;
-
-        // 🔹 Проверка на пустые данные
-       // if (!data || data.length === 0) {
-        //  setProjects([]);
-        //  return;
-       // }
-
-        // 🔹 Формируем дерево: родитель → дети
-        const buildTree = (items, parentId = null) =>
-          items
-            .filter((item) => item.parent_id === parentId)
-            .map((item) => ({
-              ...item,
-              children: buildTree(items, item.id),
-            }));
-
-        setProjects(buildTree(data));
-      } catch (err) {
-        console.error("Ошибка загрузки проектов:", err.message);
-        setError(err.message); // 🔹 Сохраняем ошибку для отображения
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProjects();
   }, []);
 
-  // 🔹 Отображение загрузки
+  // 🔹 Загрузка
   if (loading) {
     return (
       <View style={styles.loader}>
@@ -107,22 +89,19 @@ export default function Projects() {
     );
   }
 
-  // 🔹 Отображение ошибки
+  // 🔹 Ошибка
   if (error) {
     return (
       <View style={styles.loader}>
         <Text style={styles.errorText}>Ошибка: {error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => fetchProjects()}
-        >
+        <TouchableOpacity style={styles.retryButton} onPress={fetchProjects}>
           <Text style={styles.buttonText}>Повторить</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // 🔹 Отображение пустого списка
+  // 🔹 Пусто
   if (projects.length === 0) {
     return (
       <View style={styles.container}>
@@ -138,15 +117,44 @@ export default function Projects() {
     );
   }
 
-  // 🔹 Основное отображение списка проектов
+  // 🔹 Список проектов
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Список проектов</Text>
       <ScrollView>
-        <ProjectTree projects={projects} router={router} />
+        {projects.map((project) => (
+          <TouchableOpacity
+            key={project.Id}
+            style={styles.card}
+            onPress={() =>
+              router.push({
+                pathname: "/projects/projectCard",
+                params: {
+                  id: project.Id,
+                  name: project.Name || "",
+                  description: project.Description || "",
+                  prefix: project.Prefix || "",
+                  parent: project.Parent_id || "",
+                  object: project.Object_Id || "",
+                  nid: project.nid || "",
+                  dateStart: project.DateStart || "",
+                  dateEnd: project.DateEnd || "",
+                },
+              })
+            }
+          >
+            <Text style={styles.title}>
+              {project.Prefix ? `${project.Prefix} - ` : ""}
+              {project.Name}
+            </Text>
+            {project.Description ? (
+              <Text style={styles.desc}>{project.Description}</Text>
+            ) : null}
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
-      {/* 🔹 Кнопка добавления проекта */}
+      {/* 🔹 Добавление проекта */}
       <TouchableOpacity
         style={styles.button}
         onPress={() => router.push("/projects/projectCard")}
@@ -160,18 +168,23 @@ export default function Projects() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
   header: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
-  node: { marginVertical: 5 },
   card: {
     backgroundColor: "#f5f5f5",
     padding: 12,
     borderRadius: 8,
+    marginBottom: 10,
   },
-  title: { fontSize: 16 },
-  children: { marginLeft: 20, marginTop: 5 },
+  title: { fontSize: 16, fontWeight: "600" },
+  desc: { fontSize: 14, color: "#666", marginTop: 4 },
   loader: { flex: 1, justifyContent: "center", alignItems: "center" },
   loaderText: { marginTop: 10, fontSize: 16, color: "#666" },
   errorText: { fontSize: 16, color: "red", textAlign: "center" },
-  emptyText: { fontSize: 16, color: "#666", textAlign: "center", marginTop: 20 },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 20,
+  },
   button: {
     backgroundColor: "#007AFF",
     padding: 16,
