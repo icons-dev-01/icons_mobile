@@ -1,7 +1,37 @@
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableOpacity,View  } from "react-native";
+import React, { useContext, useEffect, useState } from "react";
+import { ProjectContext } from "../_layout";
+import RequestCard from "./RequestCard";
+
+
+
+export default function RequestsScreen() {
+  const { selectedProjectId } = useContext(ProjectContext);
+  const [requests, setRequests] = useState([]);
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
+
+    fetch(`https://your-api/requests?project_id=${selectedProjectId}`)
+      .then(res => res.json())
+      .then(data => setRequests(data))
+      .catch(err => console.error(err));
+  }, [selectedProjectId]);
+
+  if (!selectedProjectId) {
+    return <Text className="p-4">❌ Проект не выбран</Text>;
+  }
+
+  return (
+    <FlatList
+      data={requests}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={({ item }) => <RequestCard request={item} />}
+    />
+  );
+}
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -42,16 +72,6 @@ function RequestList({ type }) {
         </TouchableOpacity>
       )}
     />
-  );
-}
-
-export default function RequestsScreen() {
-  return (
-    <Tab.Navigator>
-      <Tab.Screen name="RFI">{() => <RequestList type="RFI" />}</Tab.Screen>
-      <Tab.Screen name="STQ">{() => <RequestList type="STQ" />}</Tab.Screen>
-      <Tab.Screen name="NCR">{() => <RequestList type="NCR" />}</Tab.Screen>
-    </Tab.Navigator>
   );
 }
 

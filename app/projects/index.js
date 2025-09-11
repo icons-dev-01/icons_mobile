@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -10,6 +9,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import React, { useContext, useEffect, useState } from "react";
+import { ProjectContext } from "../_layout";
+import ProjectCard from "./projectCard";
 
 // 🔹 Подключение к Supabase
 const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co";
@@ -20,6 +22,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function Projects() {
   const router = useRouter();
+  const { setSelectedProjectId } = useContext(ProjectContext); // ✅ правильные имена
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -126,22 +129,10 @@ export default function Projects() {
           <TouchableOpacity
             key={project.Id}
             style={styles.card}
-            onPress={() =>
-              router.push({
-                pathname: "/projects/projectCard",
-                params: {
-                  id: project.Id,
-                  name: project.Name || "",
-                  description: project.Description || "",
-                  prefix: project.Prefix || "",
-                  parent: project.Parent_id || "",
-                  object: project.Object_Id || "",
-                  nid: project.nid || "",
-                  dateStart: project.DateStart || "",
-                  dateEnd: project.DateEnd || "",
-                },
-              })
-            }
+            onPress={() => {
+              setSelectedProjectId(project.Id); // ✅ сохраняем id проекта
+              router.replace("/gpr");           // ✅ переходим на вкладку ГПР
+            }}
           >
             <Text style={styles.title}>
               {project.Prefix ? `${project.Prefix} - ` : ""}

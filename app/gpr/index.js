@@ -1,133 +1,151 @@
+import React, { useContext, useEffect, useState } from "react";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
-import { createClient } from "@supabase/supabase-js";
+import {
+  ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  View,
+  Text,
+} from "react-native";
+import { ProjectContext } from "../_layout";
+import { supabase } from "../projects/index";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Button, ScrollView, StyleSheet, View } from "react-native";
-import { List } from "react-native-paper";
-
-const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co";
-const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dGJpeW9tb3N0dmZnc3F5ZHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTkyNjYwOSwiZXhwIjoyMDcxNTAyNjA5fQ.xfq3j9C3Cl3oUxUQ1HpND_IBPYHltr_YKiZKeDIzUn4";
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const Tab = createMaterialTopTabNavigator();
-const router = useRouter();
 
-const TaskTree = ({ status, openType }) => {
-  const [expanded, setExpanded] = useState({});
+export default function GprScreen() {
+  const { selectedProjectId } = useContext(ProjectContext);
+
+  if (!selectedProjectId) {
+    return <Text style={{ padding: 16 }}>❌ Проект не выбран</Text>;
+  }
+
+  return (
+    <Tab.Navigator>
+      <Tab.Screen name="Tasks" component={TasksTab} />
+      <Tab.Screen name="Actions" component={ActionsTab} />
+    </Tab.Navigator>
+  );
+}
+
+// --- Tasks tab ---
+function TasksTab() {
+  const { selectedProjectId } = useContext(ProjectContext);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const router = useRouter();
 
-  const toggleExpand = (id) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  const fetchTasks = async () => {
+    if (!selectedProjectId) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("PlanJobs")
+        .select("Id, Name, Description, created_at")
+        .eq("Project_id", selectedProjectId);
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (err) {
+      console.error("Ошибка загрузки задач:", err.message);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // загрузка задач из PlanJobs2
   useEffect(() => {
-    const fetchTasks = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from("PlanJobs")
-          .select("*")
-          .eq("status", status); // поле value используем как статус
-
-        if (error) throw error;
-
-        // группировка по Parent_id
-        const parentTasks = data.filter((t) => !t.Parent_id);
-        const tasksWithChildren = parentTasks.map((parent) => ({
-          ...parent,
-          children: data.filter((t) => t.Parent_id === parent.Id),
-        }));
-
-        setTasks(tasksWithChildren);
-      } catch (err) {
-        console.error("Ошибка загрузки:", err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTasks();
-  }, [status]);
+  }, [selectedProjectId]);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={styles.center}>
         <ActivityIndicator size="large" color="#007bff" />
       </View>
     );
   }
 
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: "red" }}>Ошибка: {error}</Text>
+        <TouchableOpacity style={styles.button} onPress={fetchTasks}>
+          <Text style={styles.buttonText}>Повторить</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container}>
-      {tasks.map((task) =>
-        task.children && task.children.length > 0 ? (
-          <List.Accordion
-            key={task.Id}
-            title={task.Name}
-            expanded={!!expanded[task.Id]}
-            onPress={() => toggleExpand(task.Id)}
-          >
-            {task.children.map((child) => (
-              <List.Item
-                key={child.Id}
-                title={child.Name}
-                left={(props) => <List.Icon {...props} icon="file-document" />}
-                onPress={() =>
-                  router.push({
-                    pathname: openType === "action" ? "/gpr/actionCard" : "/gpr/taskCard",
-                    params: { id: child.Id },
-                  })
-                }
-              />
-            ))}
-          </List.Accordion>
+    <View style={styles.container}>
+      <ScrollView>
+        {tasks.length > 0 ? (
+          tasks.map((task) => (
+            <TouchableOpacity
+              key={task.Id}
+              style={styles.card}
+              onPress={() => router.push(`/gpr/taskCard?id=${task.Id}`)}
+            >
+              <Text style={styles.title}>{task.Name}</Text>
+              {task.Description ? (
+                <Text style={styles.desc}>{task.Description}</Text>
+              ) : null}
+            </TouchableOpacity>
+          ))
         ) : (
-          <List.Item
-            key={task.Id}
-            title={task.Name}
-            left={(props) => <List.Icon {...props} icon="check" />}
-            onPress={() =>
-              router.push({
-                pathname: openType === "action" ? "/gpr/actionCard" : "/gpr/taskCard",
-                params: { id: task.Id },
-              })
-            }
-          />
-        )
-      )}
-    </ScrollView>
+          <Text style={styles.emptyText}>Задач пока нет</Text>
+        )}
+      </ScrollView>
+
+      {/* 🔹 Кнопка добавления задачи */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => router.push("/gpr/taskCard")}
+      >
+        <Text style={styles.buttonText}>➕ Добавить задачу</Text>
+      </TouchableOpacity>
+    </View>
   );
-};
+}
 
-// вкладка Новые → добавляем кнопку
-const NewTasks = () => (
-  <View style={{ flex: 1 }}>
-    <Button
-      title="Добавить"
-      onPress={() => router.push({ pathname: "/gpr/taskCard", params: { id: "new" } })}
-    />
-    <TaskTree status="new" openType="task" />
-  </View>
-);
-
-const InProgressTasks = () => <TaskTree status="start" openType="action" />;
-const DoneTasks = () => <TaskTree status="done" openType="task" />;
-
-export default function GPRScreen() {
+// --- Actions tab (заглушка пока) ---
+function ActionsTab() {
   return (
-    <Tab.Navigator>
-      <Tab.Screen name="Новые" component={NewTasks} />
-      <Tab.Screen name="В работе" component={InProgressTasks} />
-      <Tab.Screen name="Завершенные" component={DoneTasks} />
-    </Tab.Navigator>
+    <View style={styles.center}>
+      <Text>Действия будут позже 🚧</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
+  container: { flex: 1, padding: 16, backgroundColor: "#fff" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  card: {
+    backgroundColor: "#f5f5f5",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
   },
+  title: { fontSize: 16, fontWeight: "600" },
+  desc: { fontSize: 14, color: "#666", marginTop: 4 },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 20,
+  },
+  button: {
+    backgroundColor: "#007AFF",
+    padding: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonText: { color: "white", fontSize: 16, fontWeight: "600" },
 });

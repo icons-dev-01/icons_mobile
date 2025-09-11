@@ -2,7 +2,6 @@ import { Picker } from "@react-native-picker/picker"; // ⚡️ библиоте
 import { createClient } from "@supabase/supabase-js";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState } from "react";
 import {
   Button,
   ScrollView,
@@ -10,7 +9,10 @@ import {
   Text,
   TextInput,
   View,
+  TouchableOpacity,
 } from "react-native";
+import React, { useContext,  useEffect, useState} from "react";
+import { ProjectContext } from "../_layout";
 
 // ⚡️ создаём клиент Supabase
 const supabaseUrl = "https://xttbiyomostvfgsqyduv.supabase.co";
