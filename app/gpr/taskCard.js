@@ -19,10 +19,9 @@ import {
 
 import { supabase } from "../../supabaseClient";
 
-
 export default function TaskCard() {
   const router = useRouter();
-  const { id } = useLocalSearchParams(); // берем id из параметров
+  const { id, projectId: projectParam } = useLocalSearchParams(); // ✅ берём projectId тоже
 
   // состояния
   const [name, setName] = useState("");
@@ -32,19 +31,27 @@ export default function TaskCard() {
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [parentId, setParentId] = useState(null);
   const [authorId, setAuthorId] = useState(null);
-  const [projectId, setProjectId] = useState(null);
+  const [projectId, setProjectId] = useState(null); // 🔽 сюда будем класть из параметров
   const [nextJobId, setNextJobId] = useState(null);
   const [prevJobId, setPrevJobId] = useState(null);
   const [isGroup, setIsGroup] = useState(false);
   const [value, setValue] = useState(0);
   const [sectionId, setSectionId] = useState(null);
-  const [photos, setPhotos] = useState([]); // Массив для нескольких фото
+  const [photos, setPhotos] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [description, setDescription] = useState("");
+
+// если создаём новый таск — сразу выставляем projectId из параметров
+useEffect(() => {
+  if (id === "new" && projectParam) {
+    setProjectId(String(projectParam)); // 👈 всегда строка
+  }
+}, [id, projectParam]);
 
   // загрузка данных из БД
   useEffect(() => {
-    if (id) {
+    if (id && id !== "new") {
       loadTask();
     }
   }, [id]);
@@ -67,18 +74,19 @@ export default function TaskCard() {
         .eq("Jobs_id", id);
 
       setName(task.Name || "");
-      setStartDate(new Date(task.StartDate));
-      setEndDate(new Date(task.EndDate));
+      if (task?.StartDate) setStartDate(new Date(task.StartDate));
+      if (task?.EndDate) setEndDate(new Date(task.EndDate));
       setParentId(task.Parent_id);
       setAuthorId(task.Author_id);
-      setProjectId(task.Project_id);
+      setProjectId(task.Project_id); // 🔽 подгружаем из БД, если редактируем
       setNextJobId(task.Next_job_id);
       setPrevJobId(task.Prev_job_id);
       setIsGroup(!!task.isGroup);
-      setValue(task.value || "");
+      setValue(task.value != null ? String(task.value) : "");
+      setDescription(task.Description!= null ? String(task.Description) : "");
       setSectionId(task.Section_id);
       if (files && files.length > 0) {
-        setPhotos(files.map(file => file.File)); // Загружаем все фото
+        setPhotos(files.map(file => file.File));
       }
 
     } catch (err) {
@@ -94,7 +102,7 @@ export default function TaskCard() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
-      selectionLimit: 0, // 0 - без ограничения количества
+      selectionLimit: 0,
     });
     if (!result.canceled) {
       setPhotos(prevPhotos => [...prevPhotos, ...result.assets.map(asset => asset.uri)]);
@@ -107,42 +115,13 @@ export default function TaskCard() {
   };
 
   // сохранение задачи
-  const startTask = async () => {
-      try {
-      setLoading(true);
-
-      let jobId = id;
-
-      if (id!="new") {
-        // обновляем задачу
-        const { error } = await supabase
-          .from("PlanJobs")
-          .update({
-            status: "start",
-          })
-          .eq("Id", id);
-
-        if (error) throw error;
-
-      } 
-
-      setModalVisible(true);
-    } catch (err) {
-      console.error("Ошибка сохранения:", err.message);
-      alert("Ошибка: " + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // сохранение задачи
   const saveTask = async () => {
     try {
       setLoading(true);
 
       let jobId = id;
 
-      if (id!="new") {
+      if (id !== "new") {
         // обновляем задачу
         const { error } = await supabase
           .from("PlanJobs")
@@ -152,18 +131,18 @@ export default function TaskCard() {
             EndDate: endDate.toISOString().split("T")[0],
             Parent_id: parentId,
             Author_id: authorId,
-            Project_id: projectId,
+            Project_id: projectId, // ✅ сохраняем с projectId
             Next_job_id: nextJobId,
             Prev_job_id: prevJobId,
             isGroup,
-            value,
+            value: value === "" ? null : Number(value),
             Section_id: sectionId,
+            Description: description === "" ? null : description,
           })
           .eq("Id", id);
 
         if (error) throw error;
 
-        // Удаляем существующие файлы перед добавлением новых
         await supabase
           .from("PlanJobsFiles")
           .delete()
@@ -179,12 +158,13 @@ export default function TaskCard() {
               EndDate: endDate.toISOString().split("T")[0],
               Parent_id: parentId,
               Author_id: authorId,
-              Project_id: projectId,
+              Project_id: projectId || projectParam, // 👈 подстраховка
               Next_job_id: nextJobId,
               Prev_job_id: prevJobId,
               isGroup,
-              value,
+              value: value === "" ? null : Number(value),
               Section_id: sectionId,
+              Description: description === "" ? null : description,
             },
           ])
           .select()
@@ -194,7 +174,6 @@ export default function TaskCard() {
         jobId = newJob.Id;
       }
 
-      // сохранение нескольких фото
       if (photos.length > 0) {
         const filesToInsert = photos.map(photo => ({
           Jobs_id: jobId,
@@ -215,13 +194,33 @@ export default function TaskCard() {
     }
   };
 
+  const handleStart = async () => {
+      try {
+        const { error } = await supabase.from("Actions").insert([
+          {
+            Job_id: id, // айди текущего таска
+            StartDate: startDate,
+            EndDate: endDate,
+          },
+        ]);
+
+        if (error) throw error;
+
+        alert("✅ Активность создана");
+      } catch (err) {
+        console.error("Ошибка при создании активности:", err.message);
+        alert("❌ Ошибка: " + err.message);
+      }
+    };
+
+
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       {/* верхняя панель */}
       <View style={styles.topBar}>
         <Button title="Назад" onPress={() => router.back()} />
+        <Button title="Начать" onPress={handleStart} />
         <Button title="Сохранить" onPress={saveTask} />
-        <Button title="Начать" color="green" onPress={startTask} />
       </View>
 
       {loading ? (
@@ -230,9 +229,9 @@ export default function TaskCard() {
         </View>
       ) : (
         <ScrollView style={styles.container}>
-            <Text style={styles.label}>Название</Text>
-            <TextInput style={styles.input} value={name} onChangeText={setName} />
-
+          <Text style={styles.label}>Название</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} />
+          
             <Text style={styles.label}>Планируемая дата начала</Text>
             <Button title={startDate.toLocaleDateString()} onPress={() => setShowStartPicker(true)} />
             {showStartPicker && (
@@ -302,10 +301,11 @@ export default function TaskCard() {
             <Text style={styles.label}>Описание</Text>
             <TextInput
                 style={[styles.input, { height: 80 }]}
-                value={sectionId ? sectionId.toString() : ""}
-                onChangeText={(text) => setSectionId(text)}
+                value={description}
+                onChangeText={(text) => setDescription(text)}
                 multiline
             />
+
 
             {/* 🔽 Фото материалы */}
             <Text style={styles.label}>Фото материалы</Text>
@@ -380,15 +380,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    },
-
+  },
   pickerWrapper: {
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
-        marginTop: 4,
-    },
-
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginTop: 4,
+  },
   modalBox: {
     width: "80%",
     backgroundColor: "#fff",

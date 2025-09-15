@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useCallback} from "react";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import {
   ActivityIndicator,
@@ -11,6 +11,7 @@ import {
 import { ProjectContext } from "../_layout";
 import { supabase } from "../projects/index";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -28,6 +29,7 @@ export default function GprScreen() {
     </Tab.Navigator>
   );
 }
+
 
 // --- Tasks tab ---
 function TasksTab() {
@@ -58,10 +60,12 @@ function TasksTab() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
+  
+useFocusEffect(
+  useCallback(() => {
     fetchTasks();
-  }, [selectedProjectId]);
+  }, [selectedProjectId])
+);
 
   if (loading) {
     return (
@@ -105,22 +109,85 @@ function TasksTab() {
 
       {/* 🔹 Кнопка добавления задачи */}
       <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/gpr/taskCard")}
-      >
-        <Text style={styles.buttonText}>➕ Добавить задачу</Text>
-      </TouchableOpacity>
+          style={styles.button}
+          onPress={() =>
+            router.push({
+              pathname: "/gpr/taskCard",
+              params: { id: "new", projectId: selectedProjectId }, // 👈 сюда кидаем
+            })
+          }
+        >
+          <Text style={styles.buttonText}>➕ Добавить задачу</Text>
+       </TouchableOpacity>
     </View>
   );
 }
 
 // --- Actions tab (заглушка пока) ---
+
 function ActionsTab() {
-  return (
-    <View style={styles.center}>
-      <Text>Действия будут позже 🚧</Text>
-    </View>
-  );
+  const { selectedProjectId } = useContext(ProjectContext);
+  const [actions, setActions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+    const fetchActions = async () => {
+      if (!selectedProjectId) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from("Actions")
+          .select(`
+            Id,
+            Job_id,
+            PlanJobs!inner (
+              Id,
+              Project_id,
+              Name,
+              Description
+            )
+          `)
+          .eq("PlanJobs.Project_id", selectedProjectId); // фильтруем по проекту
+
+        if (error) throw error;
+
+        setActions(data || []);
+      } catch (err) {
+        console.error("Ошибка загрузки активностей:", err.message);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+
+    useFocusEffect(
+      useCallback(() => {
+        fetchActions();
+      }, [selectedProjectId])
+    );
+
+      if (loading) return <ActivityIndicator size="large" color="#007bff" />;
+      if (error) return <Text style={{ color: "red" }}>Ошибка: {error}</Text>;
+
+      return (
+      <ScrollView style={{ padding: 16 }}>
+        {actions.length > 0 ? (
+          actions.map((action) => (
+            <View key={action.Id} style={styles.card}>
+              <Text style={styles.title}>{action.PlanJobs?.Name}</Text>
+              {action.PlanJobs?.Description ? (
+                <Text style={styles.desc}>{action.PlanJobs.Description}</Text>
+              ) : null}
+            </View>
+          ))
+        ) : (
+          <Text style={styles.emptyText}>Активностей пока нет</Text>
+        )}
+      </ScrollView>
+    );
 }
 
 const styles = StyleSheet.create({
