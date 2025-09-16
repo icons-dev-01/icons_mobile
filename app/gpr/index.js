@@ -1,17 +1,17 @@
-import React, { useContext, useEffect, useState, useCallback} from "react";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
+import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
+import { useCallback, useContext, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
-  View,
   Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { ProjectContext } from "../_layout";
 import { supabase } from "../projects/index";
-import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -130,6 +130,7 @@ function ActionsTab() {
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const router = useRouter();
     const fetchActions = async () => {
       if (!selectedProjectId) return;
 
@@ -181,7 +182,7 @@ function ActionsTab() {
                   style={styles.card}
                   onPress={() =>
                     router.push({
-                      pathname: "/gpr/actionCard",
+                      pathname: "/gpr/actionCard/",
                       params: { id: action.Id, Job_id: action.Job_id }, // 👈 открываем задачу по её Id
                     })
                   }

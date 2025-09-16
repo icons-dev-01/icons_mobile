@@ -1,9 +1,9 @@
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import * as Crypto from "expo-crypto"
 import { useRouter } from "expo-router"
 import { useState } from "react"
-import { Button, StyleSheet, Text, TextInput, View, Alert, TouchableOpacity } from "react-native"
+import { Alert, Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native"
 import { supabase } from "../supabaseClient"
-import * as Crypto from "expo-crypto"
-import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export default function Login() {
     const [username, setUsername] = useState("")
@@ -55,7 +55,7 @@ export default function Login() {
     const handleRegister = async () => {
         if (!username || !password) {
             Alert.alert("Ошибка", "Введите логин и пароль")
-            return
+            return;
         }
 
         const { data: existingUser, error: checkError } = await supabase
