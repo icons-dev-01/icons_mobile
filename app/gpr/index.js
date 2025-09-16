@@ -172,22 +172,31 @@ function ActionsTab() {
       if (loading) return <ActivityIndicator size="large" color="#007bff" />;
       if (error) return <Text style={{ color: "red" }}>Ошибка: {error}</Text>;
 
-      return (
-      <ScrollView style={{ padding: 16 }}>
-        {actions.length > 0 ? (
-          actions.map((action) => (
-            <View key={action.Id} style={styles.card}>
-              <Text style={styles.title}>{action.PlanJobs?.Name}</Text>
-              {action.PlanJobs?.Description ? (
-                <Text style={styles.desc}>{action.PlanJobs.Description}</Text>
-              ) : null}
-            </View>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>Активностей пока нет</Text>
-        )}
-      </ScrollView>
-    );
+        return (
+          <ScrollView style={{ padding: 16 }}>
+            {actions.length > 0 ? (
+              actions.map((action) => (
+                <TouchableOpacity
+                  key={action.Id}
+                  style={styles.card}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/gpr/actionCard",
+                      params: { id: action.Id, Job_id: action.Job_id }, // 👈 открываем задачу по её Id
+                    })
+                  }
+                >
+                  <Text style={styles.title}>{action.PlanJobs?.Name}</Text>
+                  {action.PlanJobs?.Description ? (
+                    <Text style={styles.desc}>{action.PlanJobs.Description}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>Активностей пока нет</Text>
+            )}
+          </ScrollView>
+        );
 }
 
 const styles = StyleSheet.create({

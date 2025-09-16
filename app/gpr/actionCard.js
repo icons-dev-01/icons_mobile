@@ -22,7 +22,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function ActivityPage() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id, Job_id } = useLocalSearchParams();
 
   // Основные данные активности
   const [startDate, setStartDate] = useState(new Date());
@@ -357,7 +357,6 @@ export default function ActivityPage() {
       <View style={styles.dateRow}>
         <View style={styles.dateColumn}>
           <Text style={styles.label}>План дата начала</Text>
-          <Text style={styles.subLabel}>Job StartDate</Text>
           <TouchableOpacity style={styles.dateInput} onPress={() => setShowPlanStartPicker(true)}>
             <Text>{formatDate(planStartDate)}</Text>
           </TouchableOpacity>
@@ -376,7 +375,7 @@ export default function ActivityPage() {
 
         <View style={styles.dateColumn}>
           <Text style={styles.label}>План дата окончания</Text>
-          <Text style={styles.subLabel}>Job StartDate</Text>
+          <Text style={styles.subLabel}>Job EndDate</Text>
           <TouchableOpacity style={styles.dateInput} onPress={() => setShowPlanEndPicker(true)}>
             <Text>{formatDate(planEndDate)}</Text>
           </TouchableOpacity>
