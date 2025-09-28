@@ -3,6 +3,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { createClient } from "@supabase/supabase-js";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import * as ImagePicker from 'expo-image-picker'
 import {
     ActivityIndicator,
     Image,
@@ -23,7 +24,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function ActivityPage() {
     const router = useRouter();
     const { id, Job_id } = useLocalSearchParams();
-
+    // public.Activities
     // Основные данные активности
     const [startDate, setStartDate] = useState(new Date());
     const [endDate, setEndDate] = useState(new Date());
@@ -66,7 +67,7 @@ export default function ActivityPage() {
     const [tempComment, setTempComment] = useState('');
     const [tempResource, setTempResource] = useState({ name: '', count: '', userName: '', date: new Date() });
     const [tempEquipment, setTempEquipment] = useState({ name: '', status: 'Выполняется', phone: '', dateStart: new Date() });
-    const [tempPhoto, setTempPhoto] = useState({ description: '', latitude: '', longitude: '', userName: '' });
+    const [tempPhoto, setTempPhoto] = useState({ description: '', latitude: '', longitude: '', userName: '', file: null, date: new Date().toISOString() });
     const [showTempResourceDate, setShowTempResourceDate] = useState(false);
     const [showTempEquipmentDate, setShowTempEquipmentDate] = useState(false);
 
@@ -84,18 +85,15 @@ export default function ActivityPage() {
 
     const fetchJobDates = async () => {
         try {
-            const { data: job, error } = await supabase
-                .from("PlanJobs")
-                .select("StartDate, EndDate")
-                .eq("Id", Job_id)
-                .single();
+            const { data: actions, error } = await supabase
+                .from("Actions")
+                .select(`
+                    Id,
+                    Job_id,
+                    PlanJobs ( StartDate, EndDate )
+                  `);
 
             if (error) throw error;
-
-            if (job) {
-                setPlanStartDate(job.StartDate ? new Date(job.StartDate) : null);
-                setPlanEndDate(job.EndDate ? new Date(job.EndDate) : null);
-            }
         } catch (err) {
             console.error("Ошибка загрузки плановых дат:", err.message);
         }
@@ -106,9 +104,9 @@ export default function ActivityPage() {
         try {
             // Загружаем основные данные активности
             const { data: activity, error } = await supabase
-                .from('Activities')
+                .from('Actions')
                 .select('*')
-                .eq('id', id)
+                .eq('Id', id)
                 .single();
 
             if (error) throw error;
@@ -173,7 +171,7 @@ export default function ActivityPage() {
             const { data, error } = await supabase
                 .from('MachineSessions')
                 .select('*')
-                .eq('Action_id', id)
+                .eq('Action_Id', id)
 
             if (!error && data) {
                 setEquipment(data);
@@ -236,15 +234,14 @@ export default function ActivityPage() {
             const { error } = await supabase
                 .from('ActionComments')
                 .insert([{
-                    Action_id: id,
+                    Action_Id: id,
+                    Author_id: null,
                     Comment: tempComment,
+                    Date: new Date().toISOString(),
                     created_at: new Date().toISOString()
                 }]);
-
-            if (!error) {
                 closeModal();
                 loadWorkLog();
-            }
         } catch (error) {
             console.error('Ошибка добавления комментария:', error);
         }
@@ -257,16 +254,16 @@ export default function ActivityPage() {
             const { error } = await supabase
                 .from('ActionMaterials')
                 .insert([{
-                    Action_id: id,
-                    Material_id: tempResource.id,
-                    count: tempResource.count,
+                    Action_Id: id,
+                    Material_id: null,
+                    Author_id: null,
+                    name: tempResource.name,
+                    counts: tempResource.count,
                     Date: tempResource.date.toISOString()
                 }]);
-
-            if (!error) {
                 closeModal();
                 loadResources();
-            }
+
         } catch (error) {
             console.error('Ошибка добавления ресурса:', error);
         }
@@ -279,42 +276,100 @@ export default function ActivityPage() {
             const { error } = await supabase
                 .from('MachineSessions')
                 .insert([{
-                    Action_id: id,
+                    Action_Id: id,
+                    Material_Id: null,
+                    Session_Id: null,
+                    name: tempEquipment.name,
                     Phone: tempEquipment.phone,
-                    Date_start: tempEquipment.dateStart.toISOString()
+                    Date_start: tempEquipment.status === "Выполняется"
+                        ? tempEquipment.dateStart.toISOString()
+                        : null,
+                    Date_end: tempEquipment.status === "Завершен"
+                        ? tempEquipment.dateStart.toISOString()
+                        : null,
+                    isStart: tempEquipment.status === "Выполняется",
+                    isEnd: tempEquipment.status === "Завершен"
                 }]);
 
-            if (!error) {
                 closeModal();
                 loadEquipment();
-            }
+            
         } catch (error) {
             console.error('Ошибка добавления оборудования:', error);
         }
     };
 
+    // 1. выбрать фото
+    const pickImage = async () => {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+            alert("Нужен доступ к галерее!");
+            return;
+        }
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            const selected = result.assets[0];
+            setTempPhoto(prev => ({
+                ...prev,
+                file: selected.uri // сохраним только путь
+            }));
+        }
+    };
+
+    // 2. сохранить в Supabase
     const addPhoto = async () => {
-        if (!tempPhoto.description.trim()) return;
+        if (!tempPhoto.description.trim() || !tempPhoto.file) {
+            alert("Заполните описание и выберите фото");
+            return;
+        }
 
         try {
-            const { error } = await supabase
+            const fileExt = tempPhoto.file.split('.').pop();
+            const fileName = `${Date.now()}.${fileExt}`;
+
+            // загрузка в bucket "photos"
+            const { error: uploadError } = await supabase.storage
+                .from('photos')
+                .upload(fileName, {
+                    uri: tempPhoto.file,
+                    type: 'image/jpeg',
+                    name: fileName,
+                });
+
+            if (uploadError) throw uploadError;
+
+            // получаем публичный URL
+            const { data: { publicUrl } } = supabase
+                .storage
+                .from('photos')
+                .getPublicUrl(fileName);
+
+            // вставка в таблицу
+            const { error: insertError } = await supabase
                 .from('ActionFiles')
                 .insert([{
                     Action_id: id,
                     Description: tempPhoto.description,
                     Date: tempPhoto.date,
-                    created_at: new Date().toISOString(),
-                    url: 'placeholder_url' // Здесь должна быть логика загрузки фото
+                    File: publicUrl,
+                    isPhoto: true
                 }]);
 
-            if (!error) {
-                closeModal();
-                loadPhotos();
-            }
+            if (insertError) throw insertError;
+
+            closeModal();
+            loadPhotos();
+
         } catch (error) {
             console.error('Ошибка добавления фото:', error);
         }
     };
+
 
     const formatDate = (date) => {
         return date.toLocaleDateString('ru-RU');
@@ -390,13 +445,13 @@ export default function ActivityPage() {
             {/* Плановые даты */}
             <View style={styles.dateRow}>
                 <View style={styles.dateColumn}>
-                    <Text style={styles.label}>План дата начала</Text>
+                    <Text style={styles.label}>План. дата начала</Text>
                     <Text style={styles.dateValue}>
                         {action?.PlanJobs?.StartDate ? formatDate(new Date(action.PlanJobs.StartDate)) : "--.--.--"}
                     </Text>
                 </View>
                 <View style={styles.dateColumn}>
-                    <Text style={styles.label}>План дата окончания</Text>
+                    <Text style={styles.label}>План. дата окончания</Text>
                     <Text style={styles.dateValue}>
                         {action?.PlanJobs?.EndDate ? formatDate(new Date(action.PlanJobs.EndDate)) : "--.--.--"}
                     </Text>
@@ -485,7 +540,7 @@ export default function ActivityPage() {
                 {/* Машины и механизмы */}
                 <View style={styles.section}>
                     <SectionHeader
-                        title="Машина и механизмы"
+                        title="Машины  и механизмы"
                         onAdd={true}
                         modalType="equipment"
                     />
@@ -508,7 +563,7 @@ export default function ActivityPage() {
                                 </View>
                             )}
                             <Text style={styles.equipmentDate}>
-                                Date_start: {new Date(item.date_start).toLocaleDateString()}
+                                {new Date(item.dateStart).toLocaleDateString()}
                             </Text>
                         </View>
                     ))}
@@ -620,7 +675,7 @@ export default function ActivityPage() {
                                         style={[styles.modalInput, { height: 100, textAlignVertical: "top" }]}
                                         value={tempComment}
                                         onChangeText={setTempComment}
-                                        placeholder="Введите комментарий..."
+                                        placeholder="Введите комментарий"
                                         multiline
                                     />
                                 </View>
@@ -628,14 +683,14 @@ export default function ActivityPage() {
 
                             {modalType === "resource" && (
                                 <View>
-                                    <Text style={styles.modalLabel}>Название материала *</Text>
+                                    <Text style={styles.modalLabel}>Название материала</Text>
                                     <TextInput
                                         style={styles.modalInput}
                                         value={tempResource.name}
                                         onChangeText={(text) =>
                                             setTempResource({ ...tempResource, name: text })
                                         }
-                                        placeholder="Material Name"
+                                        placeholder="Введите название"
                                     />
 
                                     <Text style={styles.modalLabel}>Количество</Text>
@@ -645,18 +700,8 @@ export default function ActivityPage() {
                                         onChangeText={(text) =>
                                             setTempResource({ ...tempResource, count: text })
                                         }
-                                        placeholder="Counts"
+                                        placeholder="Введите кол-во материала"
                                         keyboardType="numeric"
-                                    />
-
-                                    <Text style={styles.modalLabel}>Имя пользователя</Text>
-                                    <TextInput
-                                        style={styles.modalInput}
-                                        value={tempResource.userName}
-                                        onChangeText={(text) =>
-                                            setTempResource({ ...tempResource, userName: text })
-                                        }
-                                        placeholder="User Name"
                                     />
 
                                     <Text style={styles.modalLabel}>Дата</Text>
@@ -684,14 +729,14 @@ export default function ActivityPage() {
 
                             {modalType === "equipment" && (
                                 <View>
-                                    <Text style={styles.modalLabel}>Название *</Text>
+                                    <Text style={styles.modalLabel}>Название</Text>
                                     <TextInput
                                         style={styles.modalInput}
                                         value={tempEquipment.name}
                                         onChangeText={(text) =>
                                             setTempEquipment({ ...tempEquipment, name: text })
                                         }
-                                        placeholder="Equipment Name"
+                                        placeholder="Введите название оборудования"
                                     />
 
                                     <Text style={styles.modalLabel}>Статус</Text>
@@ -727,11 +772,11 @@ export default function ActivityPage() {
                                         onChangeText={(text) =>
                                             setTempEquipment({ ...tempEquipment, phone: text })
                                         }
-                                        placeholder="Phone"
+                                        placeholder="Ведите номер телефона"
                                         keyboardType="phone-pad"
                                     />
 
-                                    <Text style={styles.modalLabel}>Дата начала</Text>
+                                    <Text style={styles.modalLabel}>Дата начала/завершения использования</Text>
                                     <TouchableOpacity
                                         style={styles.modalDateButton}
                                         onPress={() => setShowTempEquipmentDate(true)}
@@ -756,51 +801,24 @@ export default function ActivityPage() {
 
                             {modalType === "photo" && (
                                 <View>
-                                    <Text style={styles.modalLabel}>Описание *</Text>
+                                    <Text style={styles.modalLabel}>Описание</Text>
                                     <TextInput
                                         style={styles.modalInput}
                                         value={tempPhoto.description}
                                         onChangeText={(text) =>
                                             setTempPhoto({ ...tempPhoto, description: text })
                                         }
-                                        placeholder="Description"
+                                        placeholder="Введите описание"
                                     />
 
-                                    <Text style={styles.modalLabel}>Координаты</Text>
-                                    <View style={styles.coordRow}>
-                                        <TextInput
-                                            style={[styles.modalInput, { flex: 1, marginRight: 8 }]}
-                                            value={tempPhoto.latitude}
-                                            onChangeText={(text) =>
-                                                setTempPhoto({ ...tempPhoto, latitude: text })
-                                            }
-                                            placeholder="Широта"
-                                            keyboardType="numeric"
-                                        />
-                                        <TextInput
-                                            style={[styles.modalInput, { flex: 1 }]}
-                                            value={tempPhoto.longitude}
-                                            onChangeText={(text) =>
-                                                setTempPhoto({ ...tempPhoto, longitude: text })
-                                            }
-                                            placeholder="Долгота"
-                                            keyboardType="numeric"
-                                        />
-                                    </View>
-
-                                    <Text style={styles.modalLabel}>Имя пользователя</Text>
-                                    <TextInput
-                                        style={styles.modalInput}
-                                        value={tempPhoto.userName}
-                                        onChangeText={(text) =>
-                                            setTempPhoto({ ...tempPhoto, userName: text })
-                                        }
-                                        placeholder="User Name"
-                                    />
-
-                                    <TouchableOpacity style={styles.photoPickerButton}>
+                                    <TouchableOpacity
+                                        style={styles.photoPickerButton}
+                                        onPress={pickImage} // <-- функция для выбора фото
+                                    >
                                         <Ionicons name="camera" size={24} color="#007AFF" />
-                                        <Text style={styles.photoPickerText}>Выбрать фото</Text>
+                                        <Text style={styles.photoPickerText}>
+                                            {tempPhoto.file ? "Фото выбрано" : "Выбрать фото"}
+                                        </Text>
                                     </TouchableOpacity>
                                 </View>
                             )}

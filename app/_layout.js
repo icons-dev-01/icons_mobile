@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Tabs, Stack } from "expo-router";
 import React, { createContext, useState } from "react";
 
 export const ProjectContext = createContext();
@@ -7,9 +7,9 @@ export const ProjectContext = createContext();
 export default function Layout() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
 
-  return (
+return (
     <ProjectContext.Provider value={{ selectedProjectId, setSelectedProjectId }}>
-      <Tabs screenOptions={{ headerShown: true }}>
+        <Tabs screenOptions={{ headerShown: true}}initialRouteName="login">
         <Tabs.Screen
           name="projects"
           options={{
@@ -38,7 +38,8 @@ export default function Layout() {
           }}
         />
         {/* скрываем логин из нижней панели */}
-        <Tabs.Screen name="login" options={{ href: null }} />
+              <Tabs.Screen name="login" options={{ href: null }} />
+              <Tabs.Screen name="index" options={{ href: null }} />
       </Tabs>
     </ProjectContext.Provider>
   );
