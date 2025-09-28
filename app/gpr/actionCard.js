@@ -320,8 +320,6 @@ export default function ActivityPage() {
             }));
         }
     };
-
-    // 2. сохранить в Supabase
     const addPhoto = async () => {
         if (!tempPhoto.description.trim() || !tempPhoto.file) {
             alert("Заполните описание и выберите фото");
@@ -329,33 +327,37 @@ export default function ActivityPage() {
         }
 
         try {
-            const fileExt = tempPhoto.file.split('.').pop();
+            const fileUri = tempPhoto.file;
+            const fileExt = fileUri.split('.').pop();
             const fileName = `${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
 
-            // загрузка в bucket "photos"
+            // вместо blob → arrayBuffer
+            const response = await fetch(fileUri);
+            const arrayBuffer = await response.arrayBuffer();
+
             const { error: uploadError } = await supabase.storage
                 .from('photos')
-                .upload(fileName, {
-                    uri: tempPhoto.file,
-                    type: 'image/jpeg',
-                    name: fileName,
+                .upload(filePath, arrayBuffer, {
+                    contentType: `image/${fileExt}` || 'image/jpeg',
+                    upsert: true
                 });
 
             if (uploadError) throw uploadError;
 
-            // получаем публичный URL
-            const { data: { publicUrl } } = supabase
+            const { data } = supabase
                 .storage
                 .from('photos')
-                .getPublicUrl(fileName);
+                .getPublicUrl(filePath);
 
-            // вставка в таблицу
+            const publicUrl = data.publicUrl;
+
             const { error: insertError } = await supabase
                 .from('ActionFiles')
                 .insert([{
                     Action_id: id,
                     Description: tempPhoto.description,
-                    Date: tempPhoto.date,
+                    Date: tempPhoto.date || new Date().toISOString(),
                     File: publicUrl,
                     isPhoto: true
                 }]);
@@ -503,14 +505,10 @@ export default function ActivityPage() {
                         onAdd={true}
                         modalType="comment"
                     />
-
                     {workLog.map((item, index) => (
                         <View key={index} style={styles.logItem}>
-                            <View style={styles.logHeader}>
-                                <Text style={styles.logUser}>{item.user_name}</Text>
-                                <Text style={styles.logDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
-                            </View>
-                            <Text style={styles.logComment}>{item.comment}</Text>
+                            <Text style={styles.logComment}>{item.Comment}</Text>
+                            <Text style={styles.logDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
                         </View>
                     ))}
                 </View>
@@ -525,14 +523,13 @@ export default function ActivityPage() {
 
                     {resources.map((item, index) => (
                         <View key={index} style={styles.resourceItem}>
-                            <View style={styles.resourceHeader}>
+                            <View style={styles.resourceLeft}>
                                 <Text style={styles.resourceName}>{item.name}</Text>
-                                <Text style={styles.resourceCount}>{item.count}</Text>
+                                <Text style={styles.resourceCount}>{item.counts}</Text>
                             </View>
-                            <View style={styles.resourceFooter}>
-                                <Text style={styles.resourceUser}>({item.user_name})</Text>
-                                <Text style={styles.resourceDate}>{new Date(item.date).toLocaleDateString()}</Text>
-                            </View>
+                            <Text style={styles.resourceDate}>
+                                {new Date(item.created_at).toLocaleDateString()}
+                            </Text>
                         </View>
                     ))}
                 </View>
@@ -563,7 +560,7 @@ export default function ActivityPage() {
                                 </View>
                             )}
                             <Text style={styles.equipmentDate}>
-                                {new Date(item.dateStart).toLocaleDateString()}
+                                {new Date(item.created_at).toLocaleDateString()}
                             </Text>
                         </View>
                     ))}
@@ -579,14 +576,13 @@ export default function ActivityPage() {
 
                     {photos.map((item, index) => (
                         <View key={index} style={styles.photoItem}>
-                            <Image source={{ uri: item.url }} style={styles.photoImage} />
+                            <Image source={{ uri: item.File }} style={styles.photoImage} />
                             <View style={styles.photoInfo}>
-                                <Text style={styles.photoDescription}>{item.description}</Text>
+                                <Text style={styles.photoDescription}>{item.Description}</Text>
                                 <Text style={styles.photoCoords}>
                                     Широта:geo_x ; Долгота: geo_y
                                 </Text>
                                 <View style={styles.photoMeta}>
-                                    <Text style={styles.photoUser}>{item.user_name}</Text>
                                     <Text style={styles.photoDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
                                 </View>
                             </View>
@@ -1020,60 +1016,64 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     logItem: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        paddingVertical: 8,
-    },
-    logHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 4,
-    },
-    logUser: {
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    logDate: {
-        color: '#666',
-        fontSize: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        paddingVertical: 8,
     },
     logComment: {
         color: '#333',
         fontSize: 14,
+        flex: 1,             // чтобы текст занимал всё доступное пространство
+        marginRight: 12,     // небольшой отступ от даты
+    },
+    logDate: {
+        color: '#666',
+        fontSize: 12,
+        flexShrink: 0,       // чтобы дата не съезжала на новую строку
+    },
+    logHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',  // разнесёт user и date по краям
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    logUser: {
+        flex: 1,              // займёт всё доступное место слева
+        fontWeight: 'bold',
+        color: '#333',
     },
     resourceItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',   // ← дата будет по центру вертикально
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
         paddingVertical: 8,
     },
-    resourceHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4,
+
+    resourceLeft: {
+        flexDirection: 'column', // имя сверху, количество снизу
     },
+
     resourceName: {
         fontWeight: 'bold',
         color: '#333',
+        marginBottom: 2,
     },
+
     resourceCount: {
         color: '#333',
         fontSize: 14,
     },
-    resourceFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    resourceUser: {
-        color: '#666',
-        fontSize: 12,
-    },
+
     resourceDate: {
         color: '#666',
         fontSize: 12,
     },
+
     equipmentItem: {
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
