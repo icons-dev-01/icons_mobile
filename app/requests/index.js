@@ -1,87 +1,113 @@
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { useRouter } from "expo-router";
-import { FlatList, StyleSheet, Text, TouchableOpacity,View  } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React, { useContext, useEffect, useState } from "react";
 import { ProjectContext } from "../_layout";
-import RequestCard from "./RequestCard";
-
-
-
-export default function RequestsScreen() {
-  const { selectedProjectId } = useContext(ProjectContext);
-  const [requests, setRequests] = useState([]);
-
-  useEffect(() => {
-    if (!selectedProjectId) return;
-
-    fetch(`https://your-api/requests?project_id=${selectedProjectId}`)
-      .then(res => res.json())
-      .then(data => setRequests(data))
-      .catch(err => console.error(err));
-  }, [selectedProjectId]);
-
-  if (!selectedProjectId) {
-    return <Text className="p-4">❌ Проект не выбран</Text>;
-  }
-
-  return (
-    <FlatList
-      data={requests}
-      keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => <RequestCard request={item} />}
-    />
-  );
-}
+import { supabase } from "../projects/index";
 
 const Tab = createMaterialTopTabNavigator();
 
-const initialRequests = {
-  RFI: [
-    { id: "1", title: "Запрос на изменение проекта", description: "Подробное описание RFI-1" },
-    { id: "2", title: "Запрос на уточнение чертежа", description: "Подробное описание RFI-2" },
-  ],
-  STQ: [
-    { id: "3", title: "Решение по бетонным работам", description: "Описание STQ-3" },
-    { id: "4", title: "Решение по монтажу", description: "Описание STQ-4" },
-  ],
-  NCR: [
-    { id: "5", title: "Предписание: исправить дефект", description: "Описание NCR-5" },
-    { id: "6", title: "Предписание: заменить материал", description: "Описание NCR-6" },
-  ],
-};
+export default function RequirementsPage() {
+    return (
+        <Tab.Navigator>
+            <Tab.Screen name="Авторский надзор" component={AuthorTab} />
+            <Tab.Screen name="Тех надзор" component={TechTab} />
+            <Tab.Screen name="Предписания" component={RequirementsTab} />
+        </Tab.Navigator>
+    );
+}
 
-function RequestList({ type }) {
-  const [requests] = useState(initialRequests[type]);
-  const router = useRouter();
+// --- Пустые вкладки ---
+function AuthorTab() {
+    return (
+        <View style={styles.center}>
+            <Text>Добавим позже 👷‍♂️</Text>
+        </View>
+    );
+}
 
-  return (
-    <FlatList
-      data={requests}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() =>
-            router.push({
-              pathname: "/requests/RequestCard",
-              params: { id: item.id, title: item.title, description: item.description },
-            })
-          }
-        >
-          <Text style={styles.title}>{item.title}</Text>
-        </TouchableOpacity>
-      )}
-    />
-  );
+function TechTab() {
+    return (
+        <View style={styles.center}>
+            <Text>Добавим позже 🏗️</Text>
+        </View>
+    );
+}
+
+// --- Вкладка с предписаниями ---
+function RequirementsTab() {
+    const { selectedProjectId } = useContext(ProjectContext);
+    const [requirements, setRequirements] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!selectedProjectId) return;
+
+        const fetchRequirements = async () => {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from("Requirements")
+                .select("*")
+                .eq("Project_id", selectedProjectId);
+
+            if (error) {
+                console.error("Ошибка загрузки предписаний:", error);
+            } else {
+                setRequirements(data);
+            }
+            setLoading(false);
+        };
+
+        fetchRequirements();
+    }, [selectedProjectId]);
+
+    if (!selectedProjectId) {
+        return <Text style={styles.center}>❌ Проект не выбран</Text>;
+    }
+
+    if (loading) {
+        return <Text style={styles.center}>Загрузка...</Text>;
+    }
+
+    return (
+        <FlatList
+            data={requirements}
+            keyExtractor={(item) => item.Id.toString()}
+            renderItem={({ item }) => (
+                <View style={styles.card}>
+                    <Text style={styles.title}>{item.Number}</Text>
+                    <Text style={styles.description}>{item.Justification}</Text>
+                    <Text style={styles.date}>
+                        {new Date(item.Date).toLocaleDateString()}
+                    </Text>
+                </View>
+            )}
+            ListEmptyComponent={
+                <Text style={styles.center}>Нет предписаний для этого проекта</Text>
+            }
+        />
+    );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff",
-    margin: 10,
-    padding: 15,
-    borderRadius: 10,
-    elevation: 3,
-  },
-  title: { fontSize: 16, fontWeight: "bold" },
+    center: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+        padding: 16,
+    },
+    card: {
+        backgroundColor: "#fff",
+        margin: 10,
+        padding: 15,
+        borderRadius: 10,
+        elevation: 2,
+        shadowColor: "#000",
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+    },
+    title: { fontSize: 16, fontWeight: "bold", marginBottom: 4 },
+    description: { fontSize: 14, color: "#555" },
+    date: { fontSize: 12, color: "#888", marginTop: 6 },
 });
